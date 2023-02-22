@@ -2,6 +2,7 @@ package ar.com.bancogalicia.pausados.model;
 
 import com.opencsv.bean.CsvBindByName;
 import lombok.Data;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -12,6 +13,7 @@ import java.util.List;
 @Entity
 @Table(name = "tarjetas")
 @Data
+@ToString
 public class Tarjeta {
     @Id
     @Column(name = "id", nullable = false)
@@ -46,6 +48,7 @@ public class Tarjeta {
     @Column(name = "created")
     private Date updateAt;
 
+    @ToString.Exclude
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.MERGE, mappedBy = "tarjeta")
     private List<InvocationWSResult> invocationWSResults;
 

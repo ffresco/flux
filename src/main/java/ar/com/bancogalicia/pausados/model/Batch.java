@@ -3,6 +3,7 @@ package ar.com.bancogalicia.pausados.model;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -34,6 +35,7 @@ public class Batch {
     @Column(name = "fin")
     private Date finishedAt;
 
+    @ToString.Exclude
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.MERGE, mappedBy = "batch")
     private List<InvocationWSResult> invocationWSResults;
 

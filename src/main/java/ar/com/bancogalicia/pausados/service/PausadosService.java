@@ -15,8 +15,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
+import javax.xml.ws.http.HTTPException;
 import java.io.File;
 import java.io.FileReader;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -72,9 +74,11 @@ public class PausadosService {
     public Long processBatch() {
         Batch batch = null;
         try {
-            batch = batchRepository.save(new Batch(null,PROCESO_BATCH, BATCH_COMIENZO,null,null,null)); //Se abre un proceso batch
-            //List<Integer> listaPausados = getPausadasToProcess(); //se lee el lote a procesar de archivos csv
             List<Tarjeta> listaPausdos = tarjetaRepository.findByProcesada(0);
+            if (listaPausdos.isEmpty())
+                return -1l; //no se abre un nuevo batch porque no hay nada para procesar
+
+            batch = batchRepository.save(new Batch(null,PROCESO_BATCH, BATCH_COMIENZO,null,null,null)); //Se abre un proceso batch
 
             boolean generoError = false;
             for (Tarjeta tarjeta : listaPausdos) {
@@ -86,27 +90,37 @@ public class PausadosService {
                 try {
                     LOGGER.info("Invocando Servicio pausado 1 tarjeta PK" + tarjeta + " Tarjeta num : " + tarjeta);
                     //Se invoca al servicio simulo aca la llamada
-                    String resultadoInvocacion = "200 OK";
+                    String resultadoInvocacion = getInvocacion();
+
+                    //Guardo resultado invocacion
                     invocationWSResult.setResultado(resultadoInvocacion);
                     invocationWSResultRepository.save(invocationWSResult);
 
                     //tarjetaProcesadaConExito = 1;
                     tarjeta.setProcesada(1);
 
-                } catch (HttpClientErrorException e) {
-                    if (e.getStatusCode() != null && Pattern.compile(REG_EX_4XX).matcher(e.getStatusCode().toString()).find()) {
+                } catch (HTTPException e) {
+                    if (e != null && Pattern.compile(REG_EX_4XX).matcher(String.valueOf(e.getStatusCode())).find()) {
                         LOGGER.debug("ERROR STATUS CODE 4XX, se saca tarjeta de la lista de batch a procesar para analizar falla");
                         //tarjetaProcesadaConExito = 2; //el dos significa que no se reprocesa pero hay que anailizar y volver a 0 cuando se resuelva
                         tarjeta.setProcesada(2);
+                        //Guardo error de invocacion
+                        invocationWSResult.setResultado(e.getStatusCode()+e.getMessage());
+                        invocationWSResultRepository.save(invocationWSResult);
+
                     }
-                    tarjetaRepository.save(tarjeta);
+                    //tarjetaRepository.save(tarjeta);
                     generoError = true;
 
                 } catch (Exception e) {
-                    LOGGER.error("Se produjo un error al procesar la Tarjeta PK " + tarjeta + " Tarjeta num : " + tarjeta, e);
+                    LOGGER.error("Se produjo un error al procesar la Tarjeta PK " + tarjeta.getId() + " Tarjeta num : " + tarjeta.getCardNumber(), e);
                     tarjetaRepository.save(tarjeta); //se graba en tarjeta procesada el error
                     generoError = true;
                     tarjetaProcesadaConExito = 0; //se deja sin procesar la tarjeta
+                    //Guardo error de invocacion
+                    invocationWSResult.setResultado(e.getMessage());
+                    invocationWSResultRepository.save(invocationWSResult);
+
                 }
                 // incremento el numero de veces que se proceso la tarjeta
                 //usar esta logica (tarjeta.getId(), modoCardResponse != null ? modoCardResponse.getCardId() : null,tarjetaProcesadaConExito, tarjeta.getCantidadProcesos().intValue() + 1);
@@ -127,8 +141,21 @@ public class PausadosService {
         return batch.getId();
     }
 
-    private List<Integer> getPausadasToProcess() {
-        return Arrays.asList(1, 2, 3, 0, 4, 5);
+    private  String getInvocacion() throws Exception {
+        // Instance of SecureRandom class
+        SecureRandom rand = new SecureRandom();
+        int upperbound = 100;
+        int random = rand.nextInt(upperbound);
+        LOGGER.info("Numero generado : "+random);
+        if(random <= 40)
+            return "200 OK INVOCATION";
+
+        if(random <= 70)
+            throw new Exception("ERROR GENERAL");
+
+        throw new HTTPException(403);
     }
+
+
 
 }
