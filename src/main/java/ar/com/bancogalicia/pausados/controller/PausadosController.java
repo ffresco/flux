@@ -1,6 +1,7 @@
 package ar.com.bancogalicia.pausados.controller;
 
 import ar.com.bancogalicia.pausados.service.PausadosService;
+import ar.com.bancogalicia.pausados.service.PomLoginService;
 import ar.com.bancogalicia.pausados.service.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -20,6 +21,9 @@ public class PausadosController {
     @Autowired
     @Qualifier(value = "storageService")
     StorageService storageService;
+
+    @Autowired
+    PomLoginService pomLoginService;
 
     @GetMapping("/")
     public ResponseEntity<String> getAll(){
@@ -50,6 +54,12 @@ public class PausadosController {
         //procesar batch
         Long id = pausadosService.processBatch();
         return ResponseEntity.status(HttpStatus.OK).body("Batch en proceso id: "+id);
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<String> testJson() throws Exception {
+        ResponseEntity<String> response = pomLoginService.getTest();
+        return ResponseEntity.status(HttpStatus.OK).body(response.getBody());
     }
 
 }
